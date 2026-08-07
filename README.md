@@ -37,13 +37,20 @@ git push origin v2.3.0
 
 Requirements:
 
-* JDK 17 (CI); modules ≤1.16 target Java 8, `v1_17_R1` targets Java 16
+* **JDK 8** for BuildTools on MC 1.8–1.16
+* **JDK 17** for BuildTools on MC 1.17 and for the final Maven package (`v1_17_R1` needs release 16+)
 * Maven 3.6+
 * Spigot NMS jars in the local Maven repository (`.github/scripts/install-nms.sh`)
 
 ```bash
-# Linux/macOS/Git Bash
-.github/scripts/install-nms.sh
+# Linux/macOS/Git Bash — install NMS in two Java groups
+export JAVA8_HOME=/path/to/jdk8
+export JAVA17_HOME=/path/to/jdk17
+
+NMS_GROUP=legacy  .github/scripts/install-nms.sh   # 1.8.8 – 1.16.5 (Java 8)
+NMS_GROUP=modern  .github/scripts/install-nms.sh   # 1.17.1 (Java 17)
+
+export JAVA_HOME="$JAVA17_HOME"
 mvn -B package -DskipTests
 ```
 

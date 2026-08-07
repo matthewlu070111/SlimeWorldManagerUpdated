@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   build:
-    name: Build
+    name: Build (Java 8 NMS + Java 17 package)
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
@@ -20,12 +20,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Install JDK 8 first (BuildTools for MC ≤ 1.16 requires Java 8)
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "8"
+
+      - name: Export JAVA8_HOME
+        shell: bash
+        run: |
+          echo "JAVA8_HOME=${JAVA_HOME}" >> "$GITHUB_ENV"
+          echo "JAVA8_HOME=${JAVA_HOME}"
+
+      # Default tool chain for Maven + 1.17 BuildTools
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
           cache: maven
+
+      - name: Export JAVA17_HOME
+        shell: bash
+        run: |
+          echo "JAVA17_HOME=${JAVA_HOME}" >> "$GITHUB_ENV"
+          echo "JAVA17_HOME=${JAVA_HOME}"
 
       - name: Cache BuildTools / NMS workdir
         uses: actions/cache@v4
@@ -34,17 +54,31 @@ jobs:
             .nms-build
             ~/.m2/repository/org/spigotmc
             ~/.m2/repository/com/destroystokyo
-          key: nms-${{ runner.os }}-${{ hashFiles('**/pom.xml', '.github/scripts/install-nms.sh') }}
+          key: nms-${{ runner.os }}-j8-j17-${{ hashFiles('**/pom.xml', '.github/scripts/install-nms.sh') }}
           restore-keys: |
+            nms-${{ runner.os }}-j8-j17-
             nms-${{ runner.os }}-
 
-      - name: Install NMS dependencies
+      - name: Install legacy NMS (BuildTools + Java 8)
+        env:
+          NMS_GROUP: legacy
         run: |
           chmod +x .github/scripts/install-nms.sh
           .github/scripts/install-nms.sh
 
-      - name: Build with Maven
-        run: mvn -B package -DskipTests
+      - name: Install modern NMS (BuildTools + Java 17)
+        env:
+          NMS_GROUP: modern
+        run: |
+          chmod +x .github/scripts/install-nms.sh
+          .github/scripts/install-nms.sh
+
+      - name: Build with Maven (Java 17)
+        run: |
+          export JAVA_HOME="${JAVA17_HOME}"
+          export PATH="${JAVA_HOME}/bin:${PATH}"
+          java -version
+          mvn -B package -DskipTests
 
       - name: Collect JARs
         shell: bash
