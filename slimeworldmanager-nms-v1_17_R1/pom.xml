@@ -43,8 +43,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.10.1</version>
                 <configuration>
+                    <!-- 1.17 NMS needs 16+; do not inherit source/target 1.8 -->
+                    <source>16</source>
+                    <target>16</target>
                     <release>16</release>
                 </configuration>
             </plugin>
