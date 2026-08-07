@@ -197,7 +197,8 @@ public class CustomChunkLoader extends ChunkRegionLoader {
     @Nullable
     @Override
     public ProtoChunk b(GeneratorAccess generatorAccess, int x, int z, Consumer<IChunkAccess> consumer) {
-        Chunk chunk = this.a(generatorAccess, x, z, null);
+        // Cast null: parent ChunkRegionLoader also has a(..., NBTTagCompound) → ambiguous without type
+        Chunk chunk = this.a(generatorAccess, x, z, (Consumer<Chunk>) null);
         consumer.accept(chunk);
 
         return null;
