@@ -48,7 +48,7 @@ Requirements:
 mvn -B package -DskipTests
 ```
 
-If CodeMC is unreachable, set `NMS_USE_BUILDTOOLS=1` and provide `JAVA8_HOME` / `JAVA17_HOME` for BuildTools fallback (legacy MC needs Java 8, 1.17 needs Java 17).
+NMS install downloads prebuilt jars from CodeMC (no BuildTools). BuildTools is intentionally not used in CI because old MC versions fail on modern runners (missing snapshot deps like `bungeecord-chat`).
 
 Artifacts:
 
