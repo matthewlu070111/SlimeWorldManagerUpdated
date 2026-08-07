@@ -37,22 +37,18 @@ git push origin v2.3.0
 
 Requirements:
 
-* **JDK 8** for BuildTools on MC 1.8–1.16
-* **JDK 17** for BuildTools on MC 1.17 and for the final Maven package (`v1_17_R1` needs release 16+)
+* **JDK 17** (module `v1_17_R1` compiles with `--release 16`; older modules stay on 8 bytecode)
 * Maven 3.6+
-* Spigot NMS jars in the local Maven repository (`.github/scripts/install-nms.sh`)
+* Spigot/Paper NMS jars (resolved from [CodeMC NMS](https://repo.codemc.io/repository/nms/) by default)
 
 ```bash
-# Linux/macOS/Git Bash — install NMS in two Java groups
-export JAVA8_HOME=/path/to/jdk8
-export JAVA17_HOME=/path/to/jdk17
+# Optional warm of local .m2 (CI does this too)
+.github/scripts/install-nms.sh
 
-NMS_GROUP=legacy  .github/scripts/install-nms.sh   # 1.8.8 – 1.16.5 (Java 8)
-NMS_GROUP=modern  .github/scripts/install-nms.sh   # 1.17.1 (Java 17)
-
-export JAVA_HOME="$JAVA17_HOME"
 mvn -B package -DskipTests
 ```
+
+If CodeMC is unreachable, set `NMS_USE_BUILDTOOLS=1` and provide `JAVA8_HOME` / `JAVA17_HOME` for BuildTools fallback (legacy MC needs Java 8, 1.17 needs Java 17).
 
 Artifacts:
 

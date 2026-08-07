@@ -37,6 +37,11 @@
             <id>spigot-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
+        <!-- Prebuilt Spigot/Paper NMS jars for CI and local compile (avoids BuildTools) -->
+        <repository>
+            <id>codemc-nms</id>
+            <url>https://repo.codemc.io/repository/nms/</url>
+        </repository>
     </repositories>
     <pluginRepositories>
         <pluginRepository>

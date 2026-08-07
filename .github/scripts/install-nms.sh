@@ -1,56 +1,76 @@
 #!/usr/bin/env bash
-# Install Spigot NMS jars into the local Maven repository for SWM builds.
+# Resolve Spigot/Paper NMS jars into the local Maven repository.
 #
-# BuildTools Java requirements:
-#   - Minecraft 1.8.x – 1.16.x  →  Java 8
-#   - Minecraft 1.17.x          →  Java 16+
+# Primary path: download from CodeMC NMS repo (fast, no BuildTools).
+# Optional fallback: BuildTools (set NMS_USE_BUILDTOOLS=1).
 #
 # Env:
-#   JAVA8_HOME   – JDK 8 home (required for legacy revs)
-#   JAVA17_HOME  – JDK 17 home (required for 1.17 + preferred for maven install-file)
-#   NMS_GROUP    – legacy | modern | all  (default: all)
-#   NMS_WORK_DIR – BuildTools work dir (default: <repo>/.nms-build)
-#
-# Safe to re-run: skips versions already present in ~/.m2.
+#   NMS_GROUP           – legacy | modern | all  (default: all)
+#   NMS_USE_BUILDTOOLS  – if 1, fall back to BuildTools when download fails
+#   JAVA8_HOME / JAVA17_HOME – only needed for BuildTools fallback
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WORK_DIR="${NMS_WORK_DIR:-${ROOT_DIR}/.nms-build}"
-BT_JAR="${WORK_DIR}/BuildTools.jar"
 M2_REPO="${HOME}/.m2/repository"
 NMS_GROUP="${NMS_GROUP:-all}"
+CODEMC_NMS="https://repo.codemc.io/repository/nms/"
+BT_JAR="${WORK_DIR}/BuildTools.jar"
+NMS_USE_BUILDTOOLS="${NMS_USE_BUILDTOOLS:-0}"
 
 mkdir -p "${WORK_DIR}"
-cd "${WORK_DIR}"
 
-# Resolve JDK homes (CI exports JAVA8_HOME / JAVA17_HOME; local may use JAVA_HOME only)
-if [[ -z "${JAVA8_HOME:-}" ]]; then
-  if command -v /usr/lib/jvm/temurin-8-jdk-amd64/bin/java >/dev/null 2>&1; then
-    JAVA8_HOME="/usr/lib/jvm/temurin-8-jdk-amd64"
-  elif [[ -n "${JAVA_HOME:-}" ]] && "${JAVA_HOME}/bin/java" -version 2>&1 | grep -Eq 'version "1\.8|version "8'; then
-    JAVA8_HOME="${JAVA_HOME}"
+has_artifact() {
+  local group_path="$1"
+  local artifact="$2"
+  local version="$3"
+  local jar="${M2_REPO}/${group_path}/${artifact}/${version}/${artifact}-${version}.jar"
+  # SNAPSHOT versions may use timestamped files; accept either name or any jar in dir
+  if [[ -f "${jar}" ]]; then
+    return 0
   fi
-fi
+  local dir="${M2_REPO}/${group_path}/${artifact}/${version}"
+  [[ -d "${dir}" ]] && find "${dir}" -maxdepth 1 -name "${artifact}-*.jar" ! -name "*-sources.jar" ! -name "*-javadoc.jar" | grep -q .
+}
 
-if [[ -z "${JAVA17_HOME:-}" ]]; then
-  if command -v /usr/lib/jvm/temurin-17-jdk-amd64/bin/java >/dev/null 2>&1; then
-    JAVA17_HOME="/usr/lib/jvm/temurin-17-jdk-amd64"
-  elif [[ -n "${JAVA_HOME:-}" ]] && "${JAVA_HOME}/bin/java" -version 2>&1 | grep -Eq 'version "17'; then
-    JAVA17_HOME="${JAVA_HOME}"
-  fi
-fi
+resolve_artifact() {
+  local groupId="$1"
+  local artifactId="$2"
+  local version="$3"
+  local group_path
+  group_path="$(echo "${groupId}" | tr '.' '/')"
 
-use_java() {
-  local home="$1"
-  local label="$2"
-  if [[ -z "${home}" || ! -x "${home}/bin/java" ]]; then
-    echo "ERROR: ${label} is not set or invalid (got: '${home:-}')." >&2
-    echo "Set JAVA8_HOME and/or JAVA17_HOME before running this script." >&2
-    exit 1
+  if has_artifact "${group_path}" "${artifactId}" "${version}"; then
+    echo "Skipping ${groupId}:${artifactId}:${version} (already in local repo)"
+    return 0
   fi
-  export JAVA_HOME="${home}"
-  export PATH="${JAVA_HOME}/bin:${PATH}"
-  echo "Using ${label}: $(java -version 2>&1 | head -n1)"
+
+  echo "Resolving ${groupId}:${artifactId}:${version} from CodeMC NMS..."
+  if mvn -q org.apache.maven.plugins:maven-dependency-plugin:3.6.1:get \
+      -DremoteRepositories="codemc-nms::::${CODEMC_NMS}" \
+      -Dartifact="${groupId}:${artifactId}:${version}" \
+      -Dtransitive=false; then
+    if has_artifact "${group_path}" "${artifactId}" "${version}"; then
+      echo "Installed ${groupId}:${artifactId}:${version}"
+      return 0
+    fi
+  fi
+
+  echo "WARN: Maven dependency:get failed for ${groupId}:${artifactId}:${version}" >&2
+  return 1
+}
+
+install_file() {
+  local file="$1"
+  local groupId="$2"
+  local artifactId="$3"
+  local version="$4"
+  mvn -q install:install-file \
+    -Dfile="${file}" \
+    -DgroupId="${groupId}" \
+    -DartifactId="${artifactId}" \
+    -Dversion="${version}" \
+    -Dpackaging=jar
 }
 
 download() {
@@ -63,30 +83,16 @@ download() {
   fi
 }
 
-has_artifact() {
-  local group_path="$1"
-  local artifact="$2"
-  local version="$3"
-  local jar="${M2_REPO}/${group_path}/${artifact}/${version}/${artifact}-${version}.jar"
-  [[ -f "${jar}" ]]
-}
-
-install_file() {
-  local file="$1"
-  local groupId="$2"
-  local artifactId="$3"
-  local version="$4"
-  # Prefer Java 17 for Maven tooling when available
-  if [[ -n "${JAVA17_HOME:-}" && -x "${JAVA17_HOME}/bin/java" ]]; then
-    export JAVA_HOME="${JAVA17_HOME}"
-    export PATH="${JAVA_HOME}/bin:${PATH}"
+use_java() {
+  local home="$1"
+  local label="$2"
+  if [[ -z "${home}" || ! -x "${home}/bin/java" ]]; then
+    echo "ERROR: ${label} is not set or invalid (got: '${home:-}')." >&2
+    exit 1
   fi
-  mvn -q install:install-file \
-    -Dfile="${file}" \
-    -DgroupId="${groupId}" \
-    -DartifactId="${artifactId}" \
-    -Dversion="${version}" \
-    -Dpackaging=jar
+  export JAVA_HOME="${home}"
+  export PATH="${JAVA_HOME}/bin:${PATH}"
+  echo "Using ${label}: $(java -version 2>&1 | head -n1)"
 }
 
 ensure_buildtools() {
@@ -96,17 +102,13 @@ ensure_buildtools() {
   fi
 }
 
-# build_spigot <rev> <mavenVersion> <javaHomeLabel>
-# javaHomeLabel: java8 | java17
-build_spigot() {
+build_spigot_buildtools() {
   local rev="$1"
   local version="$2"
   local java_label="$3"
-  local group_path="org/spigotmc"
-  local artifact="spigot"
 
-  if has_artifact "${group_path}" "${artifact}" "${version}"; then
-    echo "Skipping Spigot ${rev} (already installed as ${version})"
+  if has_artifact "org/spigotmc" "spigot" "${version}"; then
+    echo "Skipping BuildTools Spigot ${rev} (already installed)"
     return 0
   fi
 
@@ -117,96 +119,104 @@ build_spigot() {
   fi
 
   ensure_buildtools
-  echo "Building Spigot ${rev} via BuildTools with ${java_label} (this can take a while)..."
+  echo "Building Spigot ${rev} via BuildTools with ${java_label}..."
   local dir="${WORK_DIR}/spigot-${rev}"
   mkdir -p "${dir}"
   (
     cd "${dir}"
+    git config --global --add safe.directory '*' || true
     cp "${BT_JAR}" BuildTools.jar
     java -jar BuildTools.jar --rev "${rev}" --compile spigot
   )
 
-  if ! has_artifact "${group_path}" "${artifact}" "${version}"; then
+  if ! has_artifact "org/spigotmc" "spigot" "${version}"; then
     local built
-    built="$(find "${dir}" -maxdepth 1 -name "spigot-${rev}*.jar" ! -name "spigot-${rev}-*.jar.bak" | head -n1 || true)"
-    if [[ -z "${built}" ]]; then
-      built="$(find "${dir}" -maxdepth 1 -name "spigot-*.jar" | head -n1 || true)"
-    fi
+    built="$(find "${dir}" -maxdepth 1 -name "spigot-*.jar" | head -n1 || true)"
     if [[ -n "${built}" && -f "${built}" ]]; then
       install_file "${built}" "org.spigotmc" "spigot" "${version}"
     else
-      echo "ERROR: Could not locate built Spigot jar for ${rev}" >&2
+      echo "ERROR: BuildTools did not produce Spigot jar for ${rev}" >&2
       return 1
     fi
   fi
-  echo "Installed Spigot ${version}"
 }
 
-# Legacy modules that still declare paper coordinates in their pom:
-# install Spigot under the paper Maven coordinate so compile works.
-install_as_paper_coord() {
-  local mc_version="$1"
-  local maven_version="$2"
-  local group_path="com/destroystokyo/paper"
-  local artifact="paper"
+install_spigot() {
+  local rev="$1"
+  local version="$2"
+  local java_label="$3"
 
-  if has_artifact "${group_path}" "${artifact}" "${maven_version}"; then
-    echo "Skipping paper-coord ${maven_version} (already installed)"
+  if resolve_artifact "org.spigotmc" "spigot" "${version}"; then
     return 0
   fi
 
-  local spigot_maven_version="${mc_version}-R0.1-SNAPSHOT"
-  if ! has_artifact "org/spigotmc" "spigot" "${spigot_maven_version}"; then
-    # paper-coord targets are all pre-1.17 → Java 8
-    build_spigot "${mc_version}" "${spigot_maven_version}" "java8"
+  if [[ "${NMS_USE_BUILDTOOLS}" == "1" ]]; then
+    echo "Falling back to BuildTools for ${version}..."
+    build_spigot_buildtools "${rev}" "${version}" "${java_label}"
+    return $?
   fi
 
-  local spigot_jar="${M2_REPO}/org/spigotmc/spigot/${spigot_maven_version}/spigot-${spigot_maven_version}.jar"
-  if [[ -f "${spigot_jar}" ]]; then
-    install_file "${spigot_jar}" "com.destroystokyo.paper" "paper" "${maven_version}"
-    echo "Installed paper coordinate ${maven_version} from Spigot ${spigot_maven_version}"
+  echo "ERROR: Could not resolve org.spigotmc:spigot:${version} from CodeMC." >&2
+  echo "Set NMS_USE_BUILDTOOLS=1 to enable BuildTools fallback." >&2
+  return 1
+}
+
+install_paper() {
+  local version="$1"
+  # Prefer real paper artifact from CodeMC; otherwise alias from spigot.
+  if resolve_artifact "com.destroystokyo.paper" "paper" "${version}"; then
     return 0
   fi
 
-  echo "ERROR: Could not install paper-coordinate jar for ${mc_version}" >&2
+  local spigot_jar_dir="${M2_REPO}/org/spigotmc/spigot/${version}"
+  local spigot_jar
+  spigot_jar="$(find "${spigot_jar_dir}" -maxdepth 1 -name 'spigot-*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' 2>/dev/null | head -n1 || true)"
+  if [[ -n "${spigot_jar}" && -f "${spigot_jar}" ]]; then
+    install_file "${spigot_jar}" "com.destroystokyo.paper" "paper" "${version}"
+    echo "Installed paper coordinate ${version} from Spigot jar"
+    return 0
+  fi
+
+  echo "ERROR: Could not install paper:${version}" >&2
   return 1
 }
 
 install_legacy() {
-  echo "=== NMS group: legacy (Java 8 BuildTools) ==="
-  build_spigot "1.8.8" "1.8.8-R0.1-SNAPSHOT" "java8"
-  build_spigot "1.9" "1.9-R0.1-SNAPSHOT" "java8"
-  build_spigot "1.9.4" "1.9.4-R0.1-SNAPSHOT" "java8"
-  build_spigot "1.13" "1.13-R0.1-SNAPSHOT" "java8"
-  build_spigot "1.14.4" "1.14.4-R0.1-SNAPSHOT" "java8"
-  build_spigot "1.15.1" "1.15.1-R0.1-SNAPSHOT" "java8"
-  build_spigot "1.16.1" "1.16.1-R0.1-SNAPSHOT" "java8"
-  build_spigot "1.16.3" "1.16.3-R0.1-SNAPSHOT" "java8"
-  build_spigot "1.16.5" "1.16.5-R0.1-SNAPSHOT" "java8"
+  echo "=== NMS group: legacy (1.8.8 – 1.16.5) ==="
+  install_spigot "1.8.8" "1.8.8-R0.1-SNAPSHOT" "java8"
+  install_spigot "1.9" "1.9-R0.1-SNAPSHOT" "java8"
+  install_spigot "1.9.4" "1.9.4-R0.1-SNAPSHOT" "java8"
+  install_spigot "1.13" "1.13-R0.1-SNAPSHOT" "java8"
+  install_spigot "1.14.4" "1.14.4-R0.1-SNAPSHOT" "java8"
+  install_spigot "1.15.1" "1.15.1-R0.1-SNAPSHOT" "java8"
+  install_spigot "1.16.1" "1.16.1-R0.1-SNAPSHOT" "java8"
+  install_spigot "1.16.3" "1.16.3-R0.1-SNAPSHOT" "java8"
+  install_spigot "1.16.5" "1.16.5-R0.1-SNAPSHOT" "java8"
 
-  install_as_paper_coord "1.10.2" "1.10.2-R0.1-SNAPSHOT"
-  install_as_paper_coord "1.11.2" "1.11.2-R0.1-SNAPSHOT"
-  install_as_paper_coord "1.12.2" "1.12.2-R0.1-SNAPSHOT"
-  install_as_paper_coord "1.13.2" "1.13.2-R0.1-SNAPSHOT"
+  # Modules that still declare paper coordinates
+  install_spigot "1.10.2" "1.10.2-R0.1-SNAPSHOT" "java8"
+  install_paper "1.10.2-R0.1-SNAPSHOT"
+  install_spigot "1.11.2" "1.11.2-R0.1-SNAPSHOT" "java8"
+  install_paper "1.11.2-R0.1-SNAPSHOT"
+  install_spigot "1.12.2" "1.12.2-R0.1-SNAPSHOT" "java8"
+  install_paper "1.12.2-R0.1-SNAPSHOT"
+  install_spigot "1.13.2" "1.13.2-R0.1-SNAPSHOT" "java8"
+  install_paper "1.13.2-R0.1-SNAPSHOT"
 }
 
 install_modern() {
-  echo "=== NMS group: modern (Java 17 BuildTools) ==="
-  build_spigot "1.17.1" "1.17.1-R0.1-SNAPSHOT" "java17"
+  echo "=== NMS group: modern (1.17.1) ==="
+  install_spigot "1.17.1" "1.17.1-R0.1-SNAPSHOT" "java17"
 }
 
 echo "NMS work directory: ${WORK_DIR}"
 echo "NMS_GROUP=${NMS_GROUP}"
-echo "JAVA8_HOME=${JAVA8_HOME:-<unset>}"
-echo "JAVA17_HOME=${JAVA17_HOME:-<unset>}"
+echo "NMS_USE_BUILDTOOLS=${NMS_USE_BUILDTOOLS}"
+echo "CodeMC: ${CODEMC_NMS}"
 
 case "${NMS_GROUP}" in
-  legacy)
-    install_legacy
-    ;;
-  modern)
-    install_modern
-    ;;
+  legacy) install_legacy ;;
+  modern) install_modern ;;
   all)
     install_legacy
     install_modern
@@ -217,4 +227,4 @@ case "${NMS_GROUP}" in
     ;;
 esac
 
-echo "NMS dependencies for group '${NMS_GROUP}' are installed."
+echo "NMS dependencies for group '${NMS_GROUP}' are ready."
