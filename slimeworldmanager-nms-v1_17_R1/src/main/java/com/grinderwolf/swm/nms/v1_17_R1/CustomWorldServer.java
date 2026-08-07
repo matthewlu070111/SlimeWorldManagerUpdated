@@ -51,7 +51,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.v1_17_R1.CraftWorld;
 import org.bukkit.craftbukkit.v1_17_R1.entity.CraftHumanEntity;
 import org.bukkit.entity.HumanEntity;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.world.WorldSaveEvent;
 
 import java.io.IOException;
@@ -59,7 +58,6 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
@@ -92,13 +90,13 @@ public class CustomWorldServer extends WorldServer {
 
         SlimePropertyMap propertyMap = world.getPropertyMap();
 
-        this.E.setDifficulty(EnumDifficulty.valueOf(propertyMap.getValue(SlimeProperties.DIFFICULTY).toUpperCase()));
-        this.E.setSpawn(new BlockPosition(propertyMap.getValue(SlimeProperties.SPAWN_X), propertyMap.getValue(SlimeProperties.SPAWN_Y), propertyMap.getValue(SlimeProperties.SPAWN_Z)), 0);
-        super.setSpawnFlags(propertyMap.getValue(SlimeProperties.ALLOW_MONSTERS), propertyMap.getValue(SlimeProperties.ALLOW_ANIMALS));
+        this.E.setDifficulty(EnumDifficulty.valueOf(propertyMap.getString(SlimeProperties.DIFFICULTY).toUpperCase()));
+        this.E.setSpawn(new BlockPosition(propertyMap.getInt(SlimeProperties.SPAWN_X), propertyMap.getInt(SlimeProperties.SPAWN_Y), propertyMap.getInt(SlimeProperties.SPAWN_Z)), 0);
+        super.setSpawnFlags(propertyMap.getBoolean(SlimeProperties.ALLOW_MONSTERS), propertyMap.getBoolean(SlimeProperties.ALLOW_ANIMALS));
 
-        this.pvpMode = propertyMap.getValue(SlimeProperties.PVP);
+        this.pvpMode = propertyMap.getBoolean(SlimeProperties.PVP);
         {
-            String biomeStr = slimeWorld.getPropertyMap().getValue(SlimeProperties.DEFAULT_BIOME);
+            String biomeStr = slimeWorld.getPropertyMap().getString(SlimeProperties.DEFAULT_BIOME);
             ResourceKey<BiomeBase> biomeKey = ResourceKey.a(IRegistry.aO, new MinecraftKey(biomeStr));
             BiomeBase defaultBiome = MinecraftServer.getServer().getCustomRegistry().b(IRegistry.aO).a(biomeKey);
             this.defaultBiomeSource = new WorldChunkManager(Collections.emptyList()) {
@@ -121,17 +119,12 @@ public class CustomWorldServer extends WorldServer {
         }
     }
 
+    /**
+     * Paper exposes LightEngineThreaded#relight; Spigot does not.
+     * No-op on Spigot — lighting will update as chunks are ticked/accessed.
+     */
     public static CompletableFuture<Integer> relight(World world, Collection<? extends Chunk> chunks) {
-        CompletableFuture<Integer> future = new CompletableFuture<>();
-        WorldServer level = world.getMinecraftWorld();
-
-        Set<ChunkCoordIntPair> chunkPos = chunks.stream()
-                .map(Chunk::getPos)
-                .collect(Collectors.toSet());
-
-        level.getChunkProvider().getLightEngine().relight(chunkPos, pos -> {}, future::complete);
-
-        return future;
+        return CompletableFuture.completedFuture(0);
     }
 
     @Override
@@ -214,19 +207,6 @@ public class CustomWorldServer extends WorldServer {
         return new ProtoChunkExtension(chunk);
     }
 
-    private boolean isSectionEmptyAsync(ChunkSection section) {
-        AtomicBoolean empty = new AtomicBoolean(true);
-        section.getBlocks().forEachLocation((state, location) -> {
-            if(!empty.get()) return;
-
-            if(!state.isAir() || state.getFluid().isEmpty()) {
-                empty.set(false);
-            }
-        });
-
-        return empty.get();
-    }
-
     private Chunk createChunk(SlimeChunk chunk) {
         int x = chunk.getX();
         int z = chunk.getZ();
@@ -267,9 +247,7 @@ public class CustomWorldServer extends WorldServer {
 //                    lightEngine.a(EnumSkyBlock.a, SectionPosition.a(pos, sectionId), Converter.convertArray(slimeSection.getSkyLight()), true);
 //                }
 
-                if(!isSectionEmptyAsync(section)) {
-                    section.recalcBlockCounts();
-                }
+                section.recalcBlockCounts();
                 sections[sectionId] = section;
             }
         }
@@ -371,7 +349,8 @@ public class CustomWorldServer extends WorldServer {
             } while (!(tileentity instanceof IInventory));
 
             for (HumanEntity h : Lists.newArrayList(((IInventory) tileentity).getViewers())) {
-                ((CraftHumanEntity) h).getHandle().closeUnloadedInventory(InventoryCloseEvent.Reason.UNLOADED);
+                // InventoryCloseEvent.Reason is Paper-only; Spigot closeInventory() is enough
+                ((CraftHumanEntity) h).getHandle().closeInventory();
             }
             ((IInventory) tileentity).getViewers().clear();
         } while (true);
