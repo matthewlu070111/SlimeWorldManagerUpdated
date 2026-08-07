@@ -193,10 +193,12 @@
                             <pattern>org.bson</pattern>
                             <shadedPattern>com.grinderwolf.swm.internal.org.bson</shadedPattern>
                         </relocation>
-                        <relocation>
-                            <pattern>com.github.luben.zstd</pattern>
-                            <shadedPattern>com.grinderwolf.swm.internal.zstd</shadedPattern>
-                        </relocation>
+                        <!--
+                          Do NOT relocate zstd-jni. Its JNI native methods are bound to
+                          com.github.luben.zstd.*; renaming classes causes:
+                          UnsatisfiedLinkError: ...Zstd.compressBound(J)J
+                          (see https://github.com/luben/zstd-jni#limitations)
+                        -->
                     </relocations>
                 </configuration>
             </plugin>
