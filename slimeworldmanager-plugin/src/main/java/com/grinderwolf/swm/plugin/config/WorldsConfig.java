@@ -26,4 +26,20 @@ public class WorldsConfig {
             ex.printStackTrace();
         }
     }
+
+    /**
+     * Registers a world in {@code worlds.yml} if it is not already present.
+     * Does not overwrite custom settings for an existing entry.
+     *
+     * @return {@code true} if a new entry was written and saved
+     */
+    public boolean registerIfAbsent(String worldName, WorldData worldData) {
+        if (worlds.containsKey(worldName)) {
+            return false;
+        }
+
+        worlds.put(worldName, worldData);
+        save();
+        return true;
+    }
 }

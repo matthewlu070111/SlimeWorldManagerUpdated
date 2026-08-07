@@ -90,6 +90,11 @@ public class CloneWorldCmd implements Subcommand {
                             return;
                         }
 
+                        // Register cloned world so /swm load works after unload
+                        WorldData cloneData = worldData.copy();
+                        cloneData.setDataSource(dataSource);
+                        config.registerIfAbsent(worldName, cloneData);
+
                         sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.GREEN + "World " + ChatColor.YELLOW + worldName
                                 + ChatColor.GREEN + " loaded and generated in " + (System.currentTimeMillis() - start) + "ms!");
                     });

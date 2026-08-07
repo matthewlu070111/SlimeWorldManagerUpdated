@@ -39,6 +39,22 @@ public class WorldData {
     @Setting("readOnly")
     private boolean readOnly = false;
 
+    /** Shallow copy of settings (for clone-world registration under a new name). */
+    public WorldData copy() {
+        WorldData copy = new WorldData();
+        copy.dataSource = this.dataSource;
+        copy.spawn = this.spawn;
+        copy.difficulty = this.difficulty;
+        copy.allowMonsters = this.allowMonsters;
+        copy.allowAnimals = this.allowAnimals;
+        copy.pvp = this.pvp;
+        copy.environment = this.environment;
+        copy.worldType = this.worldType;
+        copy.loadOnStartup = this.loadOnStartup;
+        copy.readOnly = this.readOnly;
+        return copy;
+    }
+
     public SlimePropertyMap toPropertyMap() {
         try {
             Enum.valueOf(Difficulty.class, this.difficulty.toUpperCase());

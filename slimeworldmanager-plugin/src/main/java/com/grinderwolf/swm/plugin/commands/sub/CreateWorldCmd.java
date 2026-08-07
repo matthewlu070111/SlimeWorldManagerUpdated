@@ -79,6 +79,7 @@ public class CreateWorldCmd implements Subcommand {
                     long start = System.currentTimeMillis();
 
                     WorldData worldData = new WorldData();
+                    worldData.setDataSource(dataSource);
                     worldData.setSpawn("0, 64, 0");
 
                     SlimePropertyMap propertyMap = worldData.toPropertyMap();
@@ -92,9 +93,8 @@ public class CreateWorldCmd implements Subcommand {
                             Location location = new Location(Bukkit.getWorld(worldName), 0, 61, 0);
                             location.getBlock().setType(Material.BEDROCK);
 
-                            // Config
-                            config.getWorlds().put(worldName, worldData);
-                            config.save();
+                            // Config (source + defaults so load/unload/goto work after restart)
+                            config.registerIfAbsent(worldName, worldData);
 
                             sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.GREEN + "World " + ChatColor.YELLOW + worldName
                                     + ChatColor.GREEN + " created in " + (System.currentTimeMillis() - start) + "ms!");
