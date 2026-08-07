@@ -30,7 +30,7 @@ public class CustomChunkLoader extends ChunkRegionLoader {
     private final CraftSlimeWorld world;
 
     CustomChunkLoader(CraftSlimeWorld world) {
-        super(new File("temp_" + world.getName(), "region"));
+        super(new File("temp_" + world.getName(), "region"), null); // DataConverterManager unused for slime IO
         this.world = world;
     }
 
