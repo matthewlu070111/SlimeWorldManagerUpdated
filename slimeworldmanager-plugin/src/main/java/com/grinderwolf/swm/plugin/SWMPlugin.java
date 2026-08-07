@@ -17,6 +17,10 @@ import com.grinderwolf.swm.nms.v1_13_R1.v1_13_R1SlimeNMS;
 import com.grinderwolf.swm.nms.v1_13_R2.v1_13_R2SlimeNMS;
 import com.grinderwolf.swm.nms.v1_14_R1.v1_14_R1SlimeNMS;
 import com.grinderwolf.swm.nms.v1_15_R1.v1_15_R1SlimeNMS;
+import com.grinderwolf.swm.nms.v1_16_R1.v1_16_R1SlimeNMS;
+import com.grinderwolf.swm.nms.v1_16_R2.v1_16_R2SlimeNMS;
+import com.grinderwolf.swm.nms.v1_16_R3.v1_16_R3SlimeNMS;
+import com.grinderwolf.swm.nms.v1_17_R1.v1_17_R1SlimeNMS;
 import com.grinderwolf.swm.nms.v1_8_R3.v1_8_R3SlimeNMS;
 import com.grinderwolf.swm.nms.v1_9_R1.v1_9_R1SlimeNMS;
 import com.grinderwolf.swm.nms.v1_9_R2.v1_9_R2SlimeNMS;
@@ -177,8 +181,30 @@ public class SWMPlugin extends JavaPlugin implements SlimePlugin {
                 return new v1_14_R1SlimeNMS();
             case "v1_15_R1":
                 return new v1_15_R1SlimeNMS();
+            case "v1_16_R1":
+                return new v1_16_R1SlimeNMS(isPaperServer());
+            case "v1_16_R2":
+                return new v1_16_R2SlimeNMS(isPaperServer());
+            case "v1_16_R3":
+                return new v1_16_R3SlimeNMS(isPaperServer());
+            case "v1_17_R1":
+                return new v1_17_R1SlimeNMS(isPaperServer());
             default:
                 throw new InvalidVersionException(nmsVersion);
+        }
+    }
+
+    private static boolean isPaperServer() {
+        try {
+            Class.forName("com.destroystokyo.paper.PaperConfig");
+            return true;
+        } catch (ClassNotFoundException ex) {
+            try {
+                Class.forName("io.papermc.paper.configuration.Configuration");
+                return true;
+            } catch (ClassNotFoundException ex2) {
+                return false;
+            }
         }
     }
 

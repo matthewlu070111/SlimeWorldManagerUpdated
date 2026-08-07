@@ -18,4 +18,13 @@ public interface CLSMBridge {
     default boolean skipWorldAdd(Object world) {
         return false; // If true, the world won't be added to the bukkit world list
     }
+
+    /**
+     * 1.16+ WorldServer construction may query the server default gamemode before
+     * save data exists. Returning a non-null value avoids an NPE when overriding
+     * the default world.
+     */
+    default Object getDefaultGamemode() {
+        return null;
+    }
 }

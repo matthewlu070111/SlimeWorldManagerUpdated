@@ -38,5 +38,11 @@ public class SlimeProperties {
 
     });
 
-    public static final SlimeProperty[] VALUES = { SPAWN_X, SPAWN_Y, SPAWN_Z, DIFFICULTY, ALLOW_MONSTERS, ALLOW_ANIMALS, PVP, ENVIRONMENT, WORLD_TYPE };
+    /** Default biome id used when creating empty chunks (1.16+). */
+    public static final SlimeProperty DEFAULT_BIOME = new SlimeProperty("defaultBiome", PropertyType.STRING, "minecraft:plains");
+
+    /** Whether the ender dragon battle should run in The End (1.16+). */
+    public static final SlimeProperty DRAGON_BATTLE = new SlimeProperty("dragonBattle", PropertyType.BOOLEAN, true);
+
+    public static final SlimeProperty[] VALUES = { SPAWN_X, SPAWN_Y, SPAWN_Z, DIFFICULTY, ALLOW_MONSTERS, ALLOW_ANIMALS, PVP, ENVIRONMENT, WORLD_TYPE, DEFAULT_BIOME, DRAGON_BATTLE };
 }

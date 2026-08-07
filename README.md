@@ -1,79 +1,62 @@
-# Slime World Manager [![Build Status](https://travis-ci.com/Grinderwolf/Slime-World-Manager.svg?branch=master)](https://travis-ci.com/Grinderwolf/Slime-World-Manager)
+# Slime World Manager
 
-[<img src="https://discordapp.com/assets/e4923594e694a21542a489471ecffa50.svg" alt="" height="55" />](https://discord.gg/P9Pd58d)
+[![CI](https://github.com/matthewlu070111/SlimeWorldManagerUpdated/actions/workflows/ci.yml/badge.svg)](https://github.com/matthewlu070111/SlimeWorldManagerUpdated/actions/workflows/ci.yml)
+[![Release](https://github.com/matthewlu070111/SlimeWorldManagerUpdated/actions/workflows/release.yml/badge.svg)](https://github.com/matthewlu070111/SlimeWorldManagerUpdated/actions/workflows/release.yml)
 
 Slime World Manager is a Minecraft plugin that implements the Slime Region Format, developed by the Hypixel Dev Team.
- Its goal is to provide server administrators with an easy-to-use tool to load worlds faster and save space.
+Its goal is to provide server administrators with an easy-to-use tool to load worlds faster and save space.
 
-#### Releases
+#### Supported versions
 
-SWM releases can be found [here](https://www.spigotmc.org/resources/slimeworldmanager.69974/history).
+| Versions | Compile (NMS) | Runtime | Status |
+|----------|---------------|---------|--------|
+| **1.8.8 – 1.17.1** | Spigot | Spigot / Paper | Supported in this fork |
+| **1.18+** | — | — | Use [AdvancedSlimeWorldManager](https://github.com/Paul19988/Advanced-Slime-World-Manager) / AdvancedSlimePaper |
 
-## Using SWM in your plugin
+#### Spigot vs Paper
 
-#### Maven
-```
-<repositories>
-  <repository>
-    <id>glaremasters</id>
-    <url>https://repo.glaremasters.me/repository/concuncan/</url>
-  </repository>
-</repositories>
-```
+| Layer | Policy |
+|-------|--------|
+| **Compile** | Prefer **Spigot** NMS jars (BuildTools). Historical modules that still declare Paper Maven coordinates are filled from Spigot in CI. |
+| **Runtime** | **Spigot and Paper** of the same Minecraft version. |
+| **Paper-only hooks** | Optional ClassModifier patches only; never hard-required. |
 
-```
-<dependencies>
-  <dependency>
-    <groupId>com.grinderwolf</groupId>
-    <artifactId>slimeworldmanager-api</artifactId>
-    <version>INSERT LATEST VERSION HERE</version>
-  </dependency>
-</dependencies>
-```
+#### Releases vs CI
 
-#### Gradle
-```
-repositories {
-    maven { url "https://repo.glaremasters.me/repository/concuncan/" }
-}
+| Workflow | When | What |
+|----------|------|------|
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | push / PR | Build + upload **Actions artifacts** (no GitHub Release) |
+| [`.github/workflows/release.yml`](.github/workflows/release.yml) | tag `v*` | Build + **GitHub Release** with JARs and notes (commits + version range) |
 
-dependencies {
-    compileOnly group: "com.grinderwolf", name: "slimeworldmanager-api", version: "INSERT LATEST VERSION HERE";
-}
+```bash
+git tag v2.3.0
+git push origin v2.3.0
 ```
 
-#### Javadocs
+#### Build
 
-Javadocs can be found [here](https://grinderwolf.github.io/Slime-World-Manager/apidocs/).
+Requirements:
 
-## Wiki Overview
- * Plugin Usage
-    * [Installing Slime World Manager](.docs/usage/install.md)
-    * [Using Slime World Manager](.docs/usage/using.md)
-    * [Commands and permissions](.docs/usage/commands-and-permissions.md)
- * Configuration
-    * [Setting up the data sources](.docs/config/setup-data-sources.md)
-    * [Converting traditional worlds into the SRF](.docs/config/convert-world-to-srf.md)
-    * [Configuring worlds](.docs/config/configure-world.md)
-    * [Async world generation](.docs/config/async-world-generation.md)
- * SWM API
-    * [Getting started](.docs/api/setup-dev.md)
-    * [World Properties](.docs/api/properties.md)
-    * [Loading a world](.docs/api/load-world.md)
-    * [Migrating a world](.docs/api/migrate-world.md)
-    * [Importing a world](.docs/api/import-world.md)
-    * [Using other data sources](.docs/api/use-data-source.md)
- * [FAQ](.docs/faq.md)
+* JDK 17 (CI); modules ≤1.16 target Java 8, `v1_17_R1` targets Java 16
+* Maven 3.6+
+* Spigot NMS jars in the local Maven repository (`.github/scripts/install-nms.sh`)
+
+```bash
+# Linux/macOS/Git Bash
+.github/scripts/install-nms.sh
+mvn -B package -DskipTests
+```
+
+Artifacts:
+
+* `slimeworldmanager-plugin/target/slimeworldmanager-plugin-*.jar`
+* `slimeworldmanager-classmodifier/target/slimeworldmanager-classmodifier-*.jar`
 
 ## Credits
 
 Thanks to:
- * All the contributors who helped me by adding features to SWM.
- * [Glare](https://glaremasters.me) for providing me with a Maven repository.
- * [Minikloon](https://twitter.com/Minikloon) and all the [Hypixel](https://twitter.com/HypixelNetwork) team for developing the SRF.
- 
-## YourKit
 
-YourKit supports open source projects with innovative and intelligent tools for monitoring and profiling Java and .NET applications. YourKit is the creator of [YourKit Java Profiler](https://www.yourkit.com/java/profiler/), [YourKit .NET Profiler](https://www.yourkit.com/.net/profiler/) and [YourKit YouMonitor](https://www.yourkit.com/youmonitor/).
-
-![YourKit](https://www.yourkit.com/images/yklogo.png)
+* All the contributors who helped by adding features to SWM.
+* [cijaaimee](https://github.com/cijaaimee) / Grinderwolf for the original Slime World Manager.
+* Community forks (ASWM and others) whose public NMS work informed 1.16/1.17 support.
+* [Minikloon](https://twitter.com/Minikloon) and the [Hypixel](https://twitter.com/HypixelNetwork) team for developing the SRF.

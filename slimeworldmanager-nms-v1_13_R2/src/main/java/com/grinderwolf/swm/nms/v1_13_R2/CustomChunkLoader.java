@@ -7,7 +7,6 @@ import com.grinderwolf.swm.api.world.SlimeChunk;
 import com.grinderwolf.swm.api.world.SlimeChunkSection;
 import com.grinderwolf.swm.nms.CraftSlimeChunk;
 import com.grinderwolf.swm.nms.CraftSlimeWorld;
-import lombok.RequiredArgsConstructor;
 import net.minecraft.server.v1_13_R2.BiomeBase;
 import net.minecraft.server.v1_13_R2.Biomes;
 import net.minecraft.server.v1_13_R2.Block;
@@ -15,6 +14,7 @@ import net.minecraft.server.v1_13_R2.BlockPosition;
 import net.minecraft.server.v1_13_R2.Chunk;
 import net.minecraft.server.v1_13_R2.ChunkConverter;
 import net.minecraft.server.v1_13_R2.ChunkCoordIntPair;
+import net.minecraft.server.v1_13_R2.ChunkRegionLoader;
 import net.minecraft.server.v1_13_R2.ChunkSection;
 import net.minecraft.server.v1_13_R2.ChunkStatus;
 import net.minecraft.server.v1_13_R2.DimensionManager;
@@ -25,7 +25,6 @@ import net.minecraft.server.v1_13_R2.FluidTypes;
 import net.minecraft.server.v1_13_R2.GeneratorAccess;
 import net.minecraft.server.v1_13_R2.HeightMap;
 import net.minecraft.server.v1_13_R2.IChunkAccess;
-import net.minecraft.server.v1_13_R2.IChunkLoader;
 import net.minecraft.server.v1_13_R2.IRegistry;
 import net.minecraft.server.v1_13_R2.NBTBase;
 import net.minecraft.server.v1_13_R2.NBTTagCompound;
@@ -39,11 +38,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
+import java.io.File;
 import java.util.*;
 import java.util.function.Consumer;
 
-@RequiredArgsConstructor
-public class CustomChunkLoader implements IChunkLoader {
+// Extends ChunkRegionLoader so CraftServer.unloadWorld can cast chunkLoader without ClassCastException
+public class CustomChunkLoader extends ChunkRegionLoader {
 
     private static final Logger LOGGER = LogManager.getLogger("SWM Chunk Loader");
 
@@ -52,6 +52,11 @@ public class CustomChunkLoader implements IChunkLoader {
 
     {
         emptyWorldCompound.set("Level", new NBTTagCompound());
+    }
+
+    CustomChunkLoader(CraftSlimeWorld world) {
+        super(new File("temp_" + world.getName(), "region"));
+        this.world = world;
     }
 
     void loadAllChunks(CustomWorldServer server) {

@@ -5,29 +5,34 @@ import com.grinderwolf.swm.api.utils.NibbleArray;
 import com.grinderwolf.swm.api.world.SlimeChunk;
 import com.grinderwolf.swm.api.world.SlimeChunkSection;
 import com.grinderwolf.swm.nms.CraftSlimeWorld;
-import lombok.RequiredArgsConstructor;
 import net.minecraft.server.v1_8_R3.Block;
 import net.minecraft.server.v1_8_R3.Chunk;
+import net.minecraft.server.v1_8_R3.ChunkRegionLoader;
 import net.minecraft.server.v1_8_R3.ChunkSection;
 import net.minecraft.server.v1_8_R3.Entity;
 import net.minecraft.server.v1_8_R3.EntityTypes;
-import net.minecraft.server.v1_8_R3.IChunkLoader;
 import net.minecraft.server.v1_8_R3.NBTTagCompound;
 import net.minecraft.server.v1_8_R3.TileEntity;
 import net.minecraft.server.v1_8_R3.World;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
 
-@RequiredArgsConstructor
-public class CustomChunkLoader implements IChunkLoader {
+// Extends ChunkRegionLoader so CraftServer.unloadWorld can cast chunkLoader without ClassCastException
+public class CustomChunkLoader extends ChunkRegionLoader {
 
     private static final Logger LOGGER = LogManager.getLogger("SWM Chunk Loader");
 
     private final CraftSlimeWorld world;
+
+    CustomChunkLoader(CraftSlimeWorld world) {
+        super(new File("temp_" + world.getName(), "region"));
+        this.world = world;
+    }
 
     void loadAllChunks(CustomWorldServer server) {
         for (SlimeChunk chunk : new ArrayList<>(world.getChunks().values())) {
