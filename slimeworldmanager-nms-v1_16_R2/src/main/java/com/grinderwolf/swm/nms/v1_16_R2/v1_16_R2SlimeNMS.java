@@ -16,7 +16,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
-import org.bukkit.craftbukkit.libs.it.unimi.dsi.fastutil.longs.LongIterator;
 import org.bukkit.craftbukkit.v1_16_R2.CraftWorld;
 import org.bukkit.craftbukkit.v1_16_R2.util.CraftMagicNumbers;
 import org.bukkit.event.world.WorldInitEvent;
@@ -196,38 +195,10 @@ public class v1_16_R2SlimeNMS implements SlimeNMS {
         mcServer.server.addWorld(server.getWorld());
         mcServer.worldServer.put(worldKey, server);
 
-        WorldLoadListener worldloadlistener = server.getChunkProvider().playerChunkMap.worldLoadListener;
-        WorldServer worldserver = server;
-
         Bukkit.getPluginManager().callEvent(new WorldInitEvent(server.getWorld()));
 
-        if(isPaperMC) {
-            if(worldserver.getWorld().getKeepSpawnInMemory()) {
-                LOGGER.info("Preparing start region for dimension {}", worldserver.getDimensionKey().a());
-                BlockPosition blockposition = worldserver.getSpawn();
-                worldloadlistener.a(new ChunkCoordIntPair(blockposition));
-                ChunkProviderServer chunkproviderserver = worldserver.getChunkProvider();
-                chunkproviderserver.getLightEngine().a(500);
-                server.getWorld().getChunkAtAsync(blockposition.getX(), blockposition.getZ());
-                WorldServer worldserver1 = worldserver;
-                ForcedChunk forcedchunk = (ForcedChunk) worldserver.getWorldPersistentData().b(ForcedChunk::new, "chunks");
-                if(forcedchunk != null) {
-                    LongIterator longiterator = forcedchunk.a().iterator();
-
-                    while(longiterator.hasNext()) {
-                        long i = longiterator.nextLong();
-                        ChunkCoordIntPair chunkcoordintpair = new ChunkCoordIntPair(i);
-                        worldserver1.getChunkProvider().a(chunkcoordintpair, true);
-                    }
-                }
-
-                worldloadlistener.b();
-                chunkproviderserver.getLightEngine().a(5);
-                worldserver.setSpawnFlags(world.getPropertyMap().getBoolean(SlimeProperties.ALLOW_MONSTERS), world.getPropertyMap().getBoolean(SlimeProperties.ALLOW_ANIMALS));
-            }
-        }else{
-            mcServer.loadSpawn(server.getChunkProvider().playerChunkMap.worldLoadListener, server);
-        }
+        // Always use Spigot loadSpawn: getChunkAtAsync is Paper-only and is not on CraftWorld when compiling against Spigot.
+        mcServer.loadSpawn(server.getChunkProvider().playerChunkMap.worldLoadListener, server);
 
         Bukkit.getPluginManager().callEvent(new WorldLoadEvent(server.getWorld()));
 
