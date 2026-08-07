@@ -31,11 +31,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ~/.m2/repository/org/spigotmc
-            ~/.m2/repository/com/destroystokyo
-          key: nms-codemc-${{ runner.os }}-${{ hashFiles('**/pom.xml', '.github/scripts/install-nms.sh') }}
+            ~/.m2/repository/org/spigotmc/spigot
+          # Bump key suffix when install strategy changes (e.g. minimal POMs)
+          key: nms-codemc-minimalpom-v2-${{ runner.os }}-${{ hashFiles('**/pom.xml', '.github/scripts/install-nms.sh') }}
           restore-keys: |
-            nms-codemc-${{ runner.os }}-
+            nms-codemc-minimalpom-v2-${{ runner.os }}-
 
       - name: Install NMS from CodeMC
         run: |

@@ -37,10 +37,22 @@
             <id>spigot-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
-        <!-- Prebuilt Spigot/Paper NMS jars for CI and local compile (avoids BuildTools) -->
+        <!--
+          Prebuilt Spigot NMS jars for reference only.
+          CI installs jars into ~/.m2 with *minimal* POMs (see .github/scripts/install-nms.sh).
+          Do not resolve Spigot server POMs from remote during the build: CodeMC/Paper POMs
+          transitively hit papermc.io (403) for minecraft-server.
+        -->
         <repository>
             <id>codemc-nms</id>
             <url>https://repo.codemc.io/repository/nms/</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <!-- Prefer the install-nms script; keep disabled so Maven does not pull bad POMs -->
+                <enabled>false</enabled>
+            </snapshots>
         </repository>
     </repositories>
     <pluginRepositories>
