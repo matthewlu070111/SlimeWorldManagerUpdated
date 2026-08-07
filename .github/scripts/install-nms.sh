@@ -129,15 +129,11 @@ install_legacy() {
   install_from_codemc org.spigotmc spigot "1.16.3-R0.1-SNAPSHOT"
   install_from_codemc org.spigotmc spigot "1.16.5-R0.1-SNAPSHOT"
 
-  # paper-coordinate modules
+  # Former paper-coordinate modules now compile against Spigot (CodeMC)
   install_from_codemc org.spigotmc spigot "1.10.2-R0.1-SNAPSHOT"
-  install_from_codemc com.destroystokyo.paper paper "1.10.2-R0.1-SNAPSHOT"
   install_from_codemc org.spigotmc spigot "1.11.2-R0.1-SNAPSHOT"
-  install_from_codemc com.destroystokyo.paper paper "1.11.2-R0.1-SNAPSHOT"
   install_from_codemc org.spigotmc spigot "1.12.2-R0.1-SNAPSHOT"
-  install_from_codemc com.destroystokyo.paper paper "1.12.2-R0.1-SNAPSHOT"
   install_from_codemc org.spigotmc spigot "1.13.2-R0.1-SNAPSHOT"
-  install_from_codemc com.destroystokyo.paper paper "1.13.2-R0.1-SNAPSHOT"
 }
 
 install_modern() {

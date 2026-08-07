@@ -51,9 +51,15 @@ public class CustomWorldServer extends WorldServer {
         CustomChunkLoader chunkLoader = ((CustomDataManager) this.getDataManager()).getChunkLoader();
         chunkLoader.loadAllChunks(this);
 
-        // Disable auto save period as it's constantly saving the world
+        // Disable Paper auto-save period when running on Paper (field missing on Spigot)
         if (v1_11_R1SlimeNMS.IS_PAPER) {
-            this.paperConfig.autoSavePeriod = 0;
+            try {
+                java.lang.reflect.Field paperConfigField = WorldServer.class.getField("paperConfig");
+                Object paperConfig = paperConfigField.get(this);
+                paperConfig.getClass().getField("autoSavePeriod").setInt(paperConfig, 0);
+            } catch (ReflectiveOperationException ignored) {
+                // Spigot or Paper without this field
+            }
         }
     }
 
