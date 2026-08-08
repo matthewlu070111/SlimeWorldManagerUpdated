@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Locale;
@@ -18,6 +19,7 @@ import java.util.logging.Level;
 
 /**
  * Simple YAML-based message provider with English, Simplified Chinese, and Traditional Chinese.
+ * Language files are always read as UTF-8 so Chinese text is not mojibake on Windows (GBK) JVMs.
  */
 public final class Messages {
 
@@ -53,7 +55,9 @@ public final class Messages {
             langFile = new File(langDir, "en.yml");
         }
 
-        messages = YamlConfiguration.loadConfiguration(langFile);
+        // Always load with UTF-8. YamlConfiguration.loadConfiguration(File) uses the platform
+        // default charset on older Bukkit (e.g. GBK on Chinese Windows), which garbles zh_CN/zh_TW.
+        messages = loadYamlUtf8(langFile);
 
         // Merge missing keys from the jar defaults so upgrades stay complete
         try (InputStream in = SWMPlugin.getInstance().getResource("lang/" + activeLanguage + ".yml")) {
@@ -77,6 +81,17 @@ public final class Messages {
         }
 
         Logging.info("Language set to " + activeLanguage + ".");
+    }
+
+    /** Load a YAML file from disk using UTF-8 (required for Simplified/Traditional Chinese). */
+    private static FileConfiguration loadYamlUtf8(File file) {
+        try (Reader reader = Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8)) {
+            return YamlConfiguration.loadConfiguration(reader);
+        } catch (IOException ex) {
+            SWMPlugin.getInstance().getLogger().log(Level.WARNING,
+                    "Failed to load language file " + file.getName() + " as UTF-8", ex);
+            return new YamlConfiguration();
+        }
     }
 
     public static String getActiveLanguage() {
