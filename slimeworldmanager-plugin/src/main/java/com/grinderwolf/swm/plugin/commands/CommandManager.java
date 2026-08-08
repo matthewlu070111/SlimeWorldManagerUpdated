@@ -1,9 +1,8 @@
 package com.grinderwolf.swm.plugin.commands;
 
 import com.grinderwolf.swm.plugin.commands.sub.*;
-import com.grinderwolf.swm.plugin.log.Logging;
+import com.grinderwolf.swm.plugin.locale.Messages;
 import lombok.Getter;
-import org.bukkit.ChatColor;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 
@@ -41,30 +40,24 @@ public class CommandManager implements TabExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
         if (args.length == 0) {
-            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.AQUA + "Slime World Manager" + ChatColor.GRAY + " is a plugin that implements the Slime Region Format, " +
-                    "designed by the Hypixel Dev Team to load and save worlds more efficiently. To check out the help page, type "
-                    + ChatColor.YELLOW + "/swm help" + ChatColor.GRAY + ".");
-
+            sender.sendMessage(Messages.prefixed("command.main-info"));
             return true;
         }
 
         Subcommand command = commands.get(args[0]);
 
         if (command == null) {
-            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Unknown command. To check out the help page, type " + ChatColor.GRAY + "/swm help" + ChatColor.RED + ".");
-
+            sender.sendMessage(Messages.prefixed("command.unknown"));
             return true;
         }
 
         if (command.inGameOnly() && !(sender instanceof Player)) {
-            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "This command can only be run in-game.");
-
+            sender.sendMessage(Messages.prefixed("command.in-game-only"));
             return true;
         }
 
         if (!command.getPermission().equals("") && !sender.hasPermission(command.getPermission()) && !sender.hasPermission("swm.*")) {
-            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "You do not have permission to perform this command.");
-
+            sender.sendMessage(Messages.prefixed("command.no-permission"));
             return true;
         }
 
@@ -72,7 +65,7 @@ public class CommandManager implements TabExecutor {
         System.arraycopy(args, 1, subCmdArgs, 0, subCmdArgs.length);
 
         if (!command.onCommand(sender, subCmdArgs)) {
-            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Command usage: /swm " + ChatColor.GRAY + command.getUsage() + ChatColor.RED + ".");
+            sender.sendMessage(Messages.prefixed("command.usage", command.getUsage()));
         }
 
         return true;

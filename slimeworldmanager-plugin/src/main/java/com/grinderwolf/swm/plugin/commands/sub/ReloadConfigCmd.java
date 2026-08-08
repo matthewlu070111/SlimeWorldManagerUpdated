@@ -1,33 +1,41 @@
 package com.grinderwolf.swm.plugin.commands.sub;
 
-
 import com.grinderwolf.swm.plugin.config.ConfigManager;
+import com.grinderwolf.swm.plugin.locale.Messages;
 import com.grinderwolf.swm.plugin.log.Logging;
-import lombok.Getter;
 import ninja.leaping.configurate.objectmapping.ObjectMappingException;
-import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 
-@Getter
 public class ReloadConfigCmd implements Subcommand {
 
-    private final String usage = "reload";
-    private final String description = "Reloads the config files.";
-    private final String permission = "swm.reload";
+    @Override
+    public String getUsage() {
+        return "reload";
+    }
+
+    @Override
+    public String getDescription() {
+        return Messages.get("cmd.reload.description");
+    }
+
+    @Override
+    public String getPermission() {
+        return "swm.reload";
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, String[] args) {
         try {
             ConfigManager.initialize();
+            Messages.initialize(ConfigManager.getMainConfig().getLanguage());
         } catch (IOException | ObjectMappingException ex) {
             if (!(sender instanceof ConsoleCommandSender)) {
-                sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Failed to reload the config file. Take a look at the server console for more information.");
+                sender.sendMessage(Messages.prefixed("reload.failed"));
             }
 
             Logging.error("Failed to load config files:");
@@ -36,7 +44,7 @@ public class ReloadConfigCmd implements Subcommand {
             return true;
         }
 
-        sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.GREEN + "Config reloaded.");
+        sender.sendMessage(Messages.prefixed("reload.success"));
 
         return true;
     }
@@ -46,4 +54,3 @@ public class ReloadConfigCmd implements Subcommand {
         return Collections.emptyList();
     }
 }
-

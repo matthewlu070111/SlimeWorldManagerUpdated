@@ -22,7 +22,8 @@ public class Version implements Comparable<Version> {
 
         version[0] = Integer.parseInt(matcher.group("major"));
         version[1] = Integer.parseInt(matcher.group("minor"));
-        version[2] = Integer.parseInt(matcher.group("patch"));
+        String patch = matcher.group("patch");
+        version[2] = patch != null ? Integer.parseInt(patch) : 0;
         tag = matcher.group("tag") != null ? matcher.group("tag") : "";
     }
 

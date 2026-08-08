@@ -2,8 +2,7 @@ package com.grinderwolf.swm.plugin.commands.sub;
 
 import com.grinderwolf.swm.plugin.SWMPlugin;
 import com.grinderwolf.swm.plugin.config.ConfigManager;
-import com.grinderwolf.swm.plugin.log.Logging;
-import lombok.Getter;
+import com.grinderwolf.swm.plugin.locale.Messages;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.World;
@@ -12,14 +11,24 @@ import org.bukkit.command.CommandSender;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@Getter
 public class WorldListCmd implements Subcommand {
 
     private static final int MAX_ITEMS_PER_PAGE = 5;
 
-    private final String usage = "list [slime] [page]";
-    private final String description = "List all worlds. To only list slime worlds, use the 'slime' argument.";
-    private final String permission = "swm.worldlist";
+    @Override
+    public String getUsage() {
+        return "list [slime] [page]";
+    }
+
+    @Override
+    public String getDescription() {
+        return Messages.get("cmd.list.description");
+    }
+
+    @Override
+    public String getPermission() {
+        return "swm.worldlist";
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, String[] args) {
@@ -46,8 +55,7 @@ public class WorldListCmd implements Subcommand {
                     throw new NumberFormatException();
                 }
             } catch (NumberFormatException ex) {
-                sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "'" + pageString + "' is not a valid number.");
-
+                sender.sendMessage(Messages.prefixed("common.invalid-number", pageString));
                 return true;
             }
         }
@@ -56,8 +64,7 @@ public class WorldListCmd implements Subcommand {
         ConfigManager.getWorldConfig().getWorlds().keySet().stream().filter((world) -> !worldsList.contains(world)).forEach(worldsList::add);
 
         if (worldsList.isEmpty()) {
-            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "There are no worlds configured.");
-
+            sender.sendMessage(Messages.prefixed("list.empty"));
             return true;
         }
 
@@ -66,21 +73,20 @@ public class WorldListCmd implements Subcommand {
         int maxPages = ((int) d) + ((d > (int) d) ? 1 : 0);
 
         if (offset >= worldsList.size()) {
-            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "There " + (maxPages == 1 ? "is" :
-                    "are") + " only " + maxPages + " page" + (maxPages == 1 ? "" : "s") + "!");
-
+            sender.sendMessage(Messages.prefixed("list.page-out-of-range",
+                    maxPages == 1 ? "is" : "are", maxPages, maxPages == 1 ? "" : "s"));
             return true;
         }
 
         worldsList.sort(String::compareTo);
-        sender.sendMessage(Logging.COMMAND_PREFIX + "World list " + ChatColor.YELLOW + "[" + page + "/" + maxPages + "]" + ChatColor.GRAY + ":");
+        sender.sendMessage(Messages.prefixed("list.header", page, maxPages));
 
         for (int i = offset; (i - offset) < MAX_ITEMS_PER_PAGE && i < worldsList.size(); i++) {
             String world = worldsList.get(i);
 
             if (loadedWorlds.containsKey(world)) {
-                sender.sendMessage(ChatColor.GRAY + " - " + ChatColor.GREEN + world + " " + (loadedWorlds.get(world)
-                        ? "" : ChatColor.BLUE + ChatColor.ITALIC.toString() + ChatColor.UNDERLINE + "(not in SRF)"));
+                sender.sendMessage(ChatColor.GRAY + " - " + ChatColor.GREEN + world + (loadedWorlds.get(world)
+                        ? "" : Messages.get("list.not-srf")));
             } else {
                 sender.sendMessage(ChatColor.GRAY + " - " + ChatColor.RED + world);
             }

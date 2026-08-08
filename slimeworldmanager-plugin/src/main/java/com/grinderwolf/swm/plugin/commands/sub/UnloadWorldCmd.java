@@ -1,9 +1,7 @@
 package com.grinderwolf.swm.plugin.commands.sub;
 
-import com.grinderwolf.swm.plugin.log.Logging;
-import lombok.Getter;
+import com.grinderwolf.swm.plugin.locale.Messages;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -15,12 +13,22 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-@Getter
 public class UnloadWorldCmd implements Subcommand {
 
-    private final String usage = "unload <world>";
-    private final String description = "Unload a world.";
-    private final String permission = "swm.unloadworld";
+    @Override
+    public String getUsage() {
+        return "unload <world>";
+    }
+
+    @Override
+    public String getDescription() {
+        return Messages.get("cmd.unload.description");
+    }
+
+    @Override
+    public String getPermission() {
+        return "swm.unloadworld";
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, String[] args) {
@@ -28,8 +36,7 @@ public class UnloadWorldCmd implements Subcommand {
             World world = Bukkit.getWorld(args[0]);
 
             if (world == null) {
-                sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "World " + args[0] + " is not loaded!");
-
+                sender.sendMessage(Messages.prefixed("common.world-not-loaded", args[0]));
                 return true;
             }
 
@@ -50,9 +57,9 @@ public class UnloadWorldCmd implements Subcommand {
             }
 
             if (Bukkit.unloadWorld(world, true)) {
-                sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.GREEN + "World " + ChatColor.YELLOW + args[0] + ChatColor.GREEN + " unloaded correctly.");
+                sender.sendMessage(Messages.prefixed("unload.success", args[0]));
             } else {
-                sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Failed to unload world " + args[0] + ".");
+                sender.sendMessage(Messages.prefixed("unload.failed", args[0]));
             }
 
             return true;
@@ -82,4 +89,3 @@ public class UnloadWorldCmd implements Subcommand {
         return toReturn == null ? Collections.emptyList() : toReturn;
     }
 }
-

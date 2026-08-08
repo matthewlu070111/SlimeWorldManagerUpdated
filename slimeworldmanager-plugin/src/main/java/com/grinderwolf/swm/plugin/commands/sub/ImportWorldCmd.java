@@ -18,10 +18,9 @@ import com.grinderwolf.swm.plugin.config.ConfigManager;
 import com.grinderwolf.swm.plugin.config.WorldData;
 import com.grinderwolf.swm.plugin.config.WorldsConfig;
 import com.grinderwolf.swm.plugin.loaders.LoaderUtils;
+import com.grinderwolf.swm.plugin.locale.Messages;
 import com.grinderwolf.swm.plugin.log.Logging;
-import lombok.Getter;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
@@ -34,14 +33,24 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-@Getter
 public class ImportWorldCmd implements Subcommand {
 
-    private final String usage = "import <path-to-world> <data-source> [new-world-name]";
-    private final String description = "Convert a world to the slime format and save it.";
-    private final String permission = "swm.importworld";
-
     private final Cache<String, String[]> importCache = CacheBuilder.newBuilder().expireAfterWrite(1, TimeUnit.MINUTES).build();
+
+    @Override
+    public String getUsage() {
+        return "import <path-to-world> <data-source> [new-world-name]";
+    }
+
+    @Override
+    public String getDescription() {
+        return Messages.get("cmd.import.description");
+    }
+
+    @Override
+    public String getPermission() {
+        return "swm.importworld";
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, String[] args) {
@@ -50,16 +59,14 @@ public class ImportWorldCmd implements Subcommand {
             SlimeLoader loader = LoaderUtils.getLoader(dataSource);
 
             if (loader == null) {
-                sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Data source " + dataSource + " does not exist.");
-
+                sender.sendMessage(Messages.prefixed("import.source-missing", dataSource));
                 return true;
             }
 
             File worldDir = new File(args[0]);
 
             if (!worldDir.exists() || !worldDir.isDirectory()) {
-                sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Path " + worldDir.getPath() + " does not point out to a valid world directory.");
-
+                sender.sendMessage(Messages.prefixed("import.invalid-path", worldDir.getPath()));
                 return true;
             }
 
@@ -73,17 +80,17 @@ public class ImportWorldCmd implements Subcommand {
 
                     World alreadyLoaded = Bukkit.getWorld(worldName);
                     if (alreadyLoaded != null) {
-                        sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "World " + worldName + " is already loaded!");
+                        sender.sendMessage(Messages.prefixed("common.world-already-loaded", worldName));
                         return true;
                     }
 
                     if (CommandManager.getInstance().getWorldsInUse().contains(worldName)) {
-                        sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "World " + worldName + " is already being used on another command! Wait some time and try again.");
+                        sender.sendMessage(Messages.prefixed("common.world-in-use", worldName));
                         return true;
                     }
 
                     CommandManager.getInstance().getWorldsInUse().add(worldName);
-                    sender.sendMessage(Logging.COMMAND_PREFIX + "Importing world " + worldDir.getName() + " into data source " + dataSource + "...");
+                    sender.sendMessage(Messages.prefixed("import.importing", worldDir.getName(), dataSource));
 
                     Bukkit.getScheduler().runTaskAsynchronously(SWMPlugin.getInstance(), () -> {
                         try {
@@ -93,7 +100,7 @@ public class ImportWorldCmd implements Subcommand {
                             // Register so /swm load works without hand-editing worlds.yml
                             WorldData worldData = new WorldData();
                             worldData.setDataSource(dataSource);
-                            worldData.setLoadOnStartup(false); // large maps should not force-load on restart
+                            worldData.setLoadOnStartup(false); // large maps should not force-load on restart unless auto_load_all_worlds
                             WorldsConfig config = ConfigManager.getWorldConfig();
                             boolean registered = config.registerIfAbsent(worldName, worldData);
                             // If already present, use existing settings (may have custom spawn etc.)
@@ -115,14 +122,12 @@ public class ImportWorldCmd implements Subcommand {
                             Bukkit.getScheduler().runTask(SWMPlugin.getInstance(), () -> {
                                 try {
                                     SWMPlugin.getInstance().generateWorld(slimeWorld);
-                                    sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.GREEN + "World " + ChatColor.YELLOW + worldName
-                                            + ChatColor.GREEN + " imported and loaded in " + (System.currentTimeMillis() - start) + "ms!"
-                                            + (finalRegistered ? ChatColor.GRAY + " (registered in worlds.yml)" : ""));
+                                    sender.sendMessage(Messages.prefixed("import.success", worldName,
+                                            System.currentTimeMillis() - start,
+                                            finalRegistered ? Messages.get("import.registered-suffix") : ""));
                                 } catch (IllegalArgumentException ex) {
-                                    sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.GREEN + "World " + ChatColor.YELLOW + worldName
-                                            + ChatColor.GREEN + " imported successfully, but failed to load: " + ex.getMessage() + ".");
-                                    sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.GRAY + "It is registered in worlds.yml — use "
-                                            + ChatColor.YELLOW + "/swm load " + worldName + ChatColor.GRAY + " later.");
+                                    sender.sendMessage(Messages.prefixed("import.imported-load-failed", worldName, ex.getMessage()));
+                                    sender.sendMessage(Messages.prefixed("import.use-load-later", worldName));
                                 }
                             });
                         } catch (WorldAlreadyExistsException ex) {
@@ -149,44 +154,40 @@ public class ImportWorldCmd implements Subcommand {
                                 Bukkit.getScheduler().runTask(SWMPlugin.getInstance(), () -> {
                                     try {
                                         SWMPlugin.getInstance().generateWorld(slimeWorld);
-                                        sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.GREEN + "World " + ChatColor.YELLOW + worldName
-                                                + ChatColor.GREEN + " already existed in the data source and is now loaded"
-                                                + (finalRegistered ? ChatColor.GRAY + " (registered in worlds.yml)" : "")
-                                                + ChatColor.GREEN + " (" + (System.currentTimeMillis() - start) + "ms).");
+                                        sender.sendMessage(Messages.prefixed("import.already-existed-loaded", worldName,
+                                                finalRegistered ? Messages.get("import.registered-suffix") : "",
+                                                System.currentTimeMillis() - start));
                                     } catch (IllegalArgumentException genEx) {
-                                        sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Data source already has " + worldName
-                                                + (finalRegistered ? "; registered in worlds.yml. " : ". ")
-                                                + "Failed to generate: " + genEx.getMessage());
+                                        sender.sendMessage(Messages.prefixed("import.already-existed-generate-failed", worldName,
+                                                finalRegistered ? "; registered in worlds.yml. " : ". ",
+                                                genEx.getMessage()));
                                     }
                                 });
                             } catch (Exception loadEx) {
-                                sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Data source " + dataSource
-                                        + " already contains a world called " + worldName + "."
-                                        + (registered ? ChatColor.GRAY + " Registered in worlds.yml — try /swm load " + worldName + "." : ""));
+                                sender.sendMessage(Messages.prefixed("import.already-existed", dataSource, worldName,
+                                        registered ? Messages.get("import.registered-try-load", worldName) : ""));
                             }
                         } catch (InvalidWorldException ex) {
-                            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Directory " + worldDir.getName() + " does not contain a valid Minecraft world.");
+                            sender.sendMessage(Messages.prefixed("import.invalid-world", worldDir.getName()));
                         } catch (WorldLoadedException ex) {
-                            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "World " + worldDir.getName() + " is loaded on this server. Please unload it before importing it.");
+                            sender.sendMessage(Messages.prefixed("import.world-loaded", worldDir.getName()));
                         } catch (WorldTooBigException ex) {
-                            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Hey! Didn't you just read the warning? The Slime Format isn't meant for big worlds." +
-                                    " The world you provided just breaks everything. Please, trim it by using the MCEdit tool and try again.");
+                            sender.sendMessage(Messages.prefixed("import.too-big"));
                         } catch (CorruptedWorldException ex) {
-                            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "World " + worldName + " was imported but could not be loaded: world seems to be corrupted.");
+                            sender.sendMessage(Messages.prefixed("import.loaded-corrupted", worldName));
                             Logging.error("Failed to load imported world " + worldName + ": world seems to be corrupted.");
                             ex.printStackTrace();
                         } catch (NewerFormatException ex) {
-                            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "World " + worldName + " was imported but could not be loaded: newer Slime Format (" + ex.getMessage() + ").");
+                            sender.sendMessage(Messages.prefixed("import.loaded-newer", worldName, ex.getMessage()));
                         } catch (UnknownWorldException ex) {
-                            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "World " + worldName + " was imported but could not be found in data source '" + dataSource + "'.");
+                            sender.sendMessage(Messages.prefixed("import.loaded-unknown", worldName, dataSource));
                         } catch (WorldInUseException ex) {
-                            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "World " + worldName + " was imported but is already in use. Wait and try /swm load " + worldName + ".");
+                            sender.sendMessage(Messages.prefixed("import.loaded-in-use", worldName));
                         } catch (IllegalArgumentException ex) {
-                            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "World " + worldName + " was imported but failed to load: " + ex.getMessage());
+                            sender.sendMessage(Messages.prefixed("import.loaded-failed", worldName, ex.getMessage()));
                         } catch (IOException ex) {
                             if (!(sender instanceof ConsoleCommandSender)) {
-                                sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Failed to import world " + worldName
-                                        + ". Take a look at the server console for more information.");
+                                sender.sendMessage(Messages.prefixed("import.failed-io", worldName));
                             }
 
                             Logging.error("Failed to import world " + worldName + ". Stack trace:");
@@ -200,15 +201,11 @@ public class ImportWorldCmd implements Subcommand {
                 }
             }
 
-            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + ChatColor.BOLD + "WARNING: " + ChatColor.GRAY + "The Slime Format is meant to " +
-                    "be used on tiny maps, not big survival worlds. It is recommended to trim your world by using the Prune MCEdit tool to ensure " +
-                    "you don't save more chunks than you want to.");
-
+            sender.sendMessage(Messages.prefixed("import.warning"));
             sender.sendMessage(" ");
-            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.YELLOW + ChatColor.BOLD + "NOTE: " + ChatColor.GRAY + "This command will automatically ignore every " +
-                    "chunk that doesn't contain any blocks.");
+            sender.sendMessage(Messages.prefixed("import.note"));
             sender.sendMessage(" ");
-            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.GRAY + "If you are sure you want to continue, type again this command.");
+            sender.sendMessage(Messages.prefixed("import.confirm"));
 
             importCache.put(sender.getName(), args);
 

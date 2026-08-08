@@ -4,29 +4,37 @@ import com.grinderwolf.swm.api.loaders.SlimeLoader;
 import com.grinderwolf.swm.api.world.SlimeWorld;
 import com.grinderwolf.swm.plugin.SWMPlugin;
 import com.grinderwolf.swm.plugin.loaders.LoaderUtils;
+import com.grinderwolf.swm.plugin.locale.Messages;
 import com.grinderwolf.swm.plugin.log.Logging;
-import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
-import org.bukkit.entity.Player;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-@Getter
 public class DSListCmd implements Subcommand {
 
     private static final int MAX_ITEMS_PER_PAGE = 5;
 
-    private final String usage = "dslist <data-source> [page]";
-    private final String description = "List all worlds inside a data source.";
-    private final String permission = "swm.dslist";
+    @Override
+    public String getUsage() {
+        return "dslist <data-source> [page]";
+    }
+
+    @Override
+    public String getDescription() {
+        return Messages.get("cmd.dslist.description");
+    }
+
+    @Override
+    public String getPermission() {
+        return "swm.dslist";
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, String[] args) {
@@ -45,8 +53,7 @@ public class DSListCmd implements Subcommand {
                         throw new NumberFormatException();
                     }
                 } catch (NumberFormatException ex) {
-                    sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "'" + pageString + "' is not a valid number.");
-
+                    sender.sendMessage(Messages.prefixed("common.invalid-number", pageString));
                     return true;
                 }
             }
@@ -55,8 +62,7 @@ public class DSListCmd implements Subcommand {
             SlimeLoader loader = LoaderUtils.getLoader(source);
 
             if (loader == null) {
-                sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Unknown data source " + source + ".");
-
+                sender.sendMessage(Messages.prefixed("common.unknown-data-source", source));
                 return true;
             }
 
@@ -68,7 +74,7 @@ public class DSListCmd implements Subcommand {
                     worldList = loader.listWorlds();
                 } catch (IOException ex) {
                     if (!(sender instanceof ConsoleCommandSender)) {
-                        sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Failed to load world list. Take a look at the server console for more information.");
+                        sender.sendMessage(Messages.prefixed("dslist.failed"));
                     }
 
                     Logging.error("Failed to load world list:");
@@ -77,8 +83,7 @@ public class DSListCmd implements Subcommand {
                 }
 
                 if (worldList.isEmpty()) {
-                    sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "There are no worlds stored in data source " + source + ".");
-
+                    sender.sendMessage(Messages.prefixed("dslist.empty", source));
                     return;
                 }
 
@@ -87,14 +92,13 @@ public class DSListCmd implements Subcommand {
                 int maxPages = ((int) d) + ((d > (int) d) ? 1 : 0);
 
                 if (offset >= worldList.size()) {
-                    sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "There " + (maxPages == 1 ? "is" :
-                            "are") + " only " + maxPages + " page" + (maxPages == 1 ? "" : "s") + "!");
-
+                    sender.sendMessage(Messages.prefixed("dslist.page-out-of-range",
+                            maxPages == 1 ? "is" : "are", maxPages, maxPages == 1 ? "" : "s"));
                     return;
                 }
 
                 worldList.sort(String::compareTo);
-                sender.sendMessage(Logging.COMMAND_PREFIX + "World list " + ChatColor.YELLOW + "[" + page + "/" + maxPages + "]" + ChatColor.GRAY + ":");
+                sender.sendMessage(Messages.prefixed("dslist.header", page, maxPages));
 
                 for (int i = offset; (i - offset) < MAX_ITEMS_PER_PAGE && i < worldList.size(); i++) {
                     String world = worldList.get(i);

@@ -27,6 +27,7 @@ import com.grinderwolf.swm.nms.v1_9_R2.v1_9_R2SlimeNMS;
 import com.grinderwolf.swm.plugin.commands.CommandManager;
 import com.grinderwolf.swm.plugin.config.*;
 import com.grinderwolf.swm.plugin.loaders.LoaderUtils;
+import com.grinderwolf.swm.plugin.locale.Messages;
 import com.grinderwolf.swm.plugin.log.Logging;
 import com.grinderwolf.swm.plugin.update.Updater;
 import com.grinderwolf.swm.plugin.upgrade.WorldUpgrader;
@@ -36,7 +37,6 @@ import lombok.Getter;
 import ninja.leaping.configurate.objectmapping.ObjectMappingException;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.*;
-import org.bukkit.command.Command;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -68,6 +68,8 @@ public class SWMPlugin extends JavaPlugin implements SlimePlugin {
             return;
         }
 
+        Messages.initialize(ConfigManager.getMainConfig().getLanguage());
+
         LoaderUtils.registerLoaders();
 
         try {
@@ -75,6 +77,10 @@ public class SWMPlugin extends JavaPlugin implements SlimePlugin {
         } catch (InvalidVersionException ex) {
             Logging.error(ex.getMessage());
             return;
+        }
+
+        if (ConfigManager.getMainConfig().isAutoLoadAllWorlds()) {
+            discoverAndRegisterAllWorlds();
         }
 
         List<String> erroredWorlds = loadWorlds();
@@ -208,48 +214,97 @@ public class SWMPlugin extends JavaPlugin implements SlimePlugin {
         }
     }
 
+    /**
+     * Lists every slime world from all registered loaders and adds missing
+     * entries to {@code worlds.yml} so they can be loaded on startup.
+     */
+    private void discoverAndRegisterAllWorlds() {
+        WorldsConfig config = ConfigManager.getWorldConfig();
+        boolean changed = false;
+
+        for (String dataSource : LoaderUtils.getAvailableLoadersNames()) {
+            SlimeLoader loader = getLoader(dataSource);
+            if (loader == null) {
+                continue;
+            }
+
+            List<String> found;
+            try {
+                found = loader.listWorlds();
+            } catch (IOException ex) {
+                Logging.error(Messages.get("startup.discover-failed", dataSource));
+                ex.printStackTrace();
+                continue;
+            }
+
+            for (String worldName : found) {
+                if (config.getWorlds().containsKey(worldName)) {
+                    continue;
+                }
+
+                WorldData data = new WorldData();
+                data.setDataSource(dataSource);
+                data.setLoadOnStartup(true);
+                config.getWorlds().put(worldName, data);
+                Logging.info(Messages.get("startup.auto-registered", worldName, dataSource));
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            config.save();
+        }
+    }
+
     private List<String> loadWorlds() {
         List<String> erroredWorlds = new ArrayList<>();
         WorldsConfig config = ConfigManager.getWorldConfig();
+        boolean loadAll = ConfigManager.getMainConfig().isAutoLoadAllWorlds();
+
+        if (loadAll) {
+            Logging.info(Messages.get("startup.loading-all"));
+        }
 
         for (Map.Entry<String, WorldData> entry : config.getWorlds().entrySet()) {
             String worldName = entry.getKey();
             WorldData worldData = entry.getValue();
 
-            if (worldData.isLoadOnStartup()) {
-                try {
-                    SlimeLoader loader = getLoader(worldData.getDataSource());
+            if (!loadAll && !worldData.isLoadOnStartup()) {
+                continue;
+            }
 
-                    if (loader == null) {
-                        throw new IllegalArgumentException("invalid data source " + worldData.getDataSource() + "");
-                    }
+            try {
+                SlimeLoader loader = getLoader(worldData.getDataSource());
 
-                    SlimePropertyMap propertyMap = worldData.toPropertyMap();
-                    SlimeWorld world = loadWorld(loader, worldName, worldData.isReadOnly(), propertyMap);
-
-                    worlds.add(world);
-                } catch (IllegalArgumentException | UnknownWorldException | NewerFormatException | WorldInUseException | CorruptedWorldException | IOException ex) {
-                    String message;
-
-                    if (ex instanceof IllegalArgumentException) {
-                        message = ex.getMessage();
-                    } else if (ex instanceof UnknownWorldException) {
-                        message = "world does not exist, are you sure you've set the correct data source?";
-                    } else if (ex instanceof NewerFormatException) {
-                        message = "world is serialized in a newer Slime Format version (" + ex.getMessage() + ") that SWM does not understand.";
-                    } else if (ex instanceof WorldInUseException) {
-                        message = "world is in use! If you think this is a mistake, please wait some time and try again.";
-                    } else if (ex instanceof CorruptedWorldException) {
-                        message = "world seems to be corrupted.";
-                    } else {
-                        message = "";
-
-                        ex.printStackTrace();
-                    }
-
-                    Logging.error("Failed to load world " + worldName + (message.isEmpty() ? "." : ": " + message));
-                    erroredWorlds.add(worldName);
+                if (loader == null) {
+                    throw new IllegalArgumentException("invalid data source " + worldData.getDataSource() + "");
                 }
+
+                SlimePropertyMap propertyMap = worldData.toPropertyMap();
+                SlimeWorld world = loadWorld(loader, worldName, worldData.isReadOnly(), propertyMap);
+
+                worlds.add(world);
+            } catch (IllegalArgumentException | UnknownWorldException | NewerFormatException | WorldInUseException | CorruptedWorldException | IOException ex) {
+                String message;
+
+                if (ex instanceof IllegalArgumentException) {
+                    message = ex.getMessage();
+                } else if (ex instanceof UnknownWorldException) {
+                    message = "world does not exist, are you sure you've set the correct data source?";
+                } else if (ex instanceof NewerFormatException) {
+                    message = "world is serialized in a newer Slime Format version (" + ex.getMessage() + ") that SWM does not understand.";
+                } else if (ex instanceof WorldInUseException) {
+                    message = "world is in use! If you think this is a mistake, please wait some time and try again.";
+                } else if (ex instanceof CorruptedWorldException) {
+                    message = "world seems to be corrupted.";
+                } else {
+                    message = "";
+
+                    ex.printStackTrace();
+                }
+
+                Logging.error("Failed to load world " + worldName + (message.isEmpty() ? "." : ": " + message));
+                erroredWorlds.add(worldName);
             }
         }
 

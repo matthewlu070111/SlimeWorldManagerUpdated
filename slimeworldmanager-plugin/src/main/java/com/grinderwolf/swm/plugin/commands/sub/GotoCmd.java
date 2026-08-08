@@ -1,7 +1,6 @@
 package com.grinderwolf.swm.plugin.commands.sub;
 
-import com.grinderwolf.swm.plugin.log.Logging;
-import lombok.Getter;
+import com.grinderwolf.swm.plugin.locale.Messages;
 import org.bukkit.*;
 import org.bukkit.block.BlockFace;
 import org.bukkit.command.CommandSender;
@@ -12,12 +11,22 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-@Getter
 public class GotoCmd implements Subcommand {
 
-    private final String usage = "goto <world> [player]";
-    private final String description = "Teleport yourself (or someone else) to a world.";
-    private final String permission = "swm.goto";
+    @Override
+    public String getUsage() {
+        return "goto <world> [player]";
+    }
+
+    @Override
+    public String getDescription() {
+        return Messages.get("cmd.goto.description");
+    }
+
+    @Override
+    public String getPermission() {
+        return "swm.goto";
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, String[] args) {
@@ -25,8 +34,7 @@ public class GotoCmd implements Subcommand {
             World world = Bukkit.getWorld(args[0]);
 
             if (world == null) {
-                sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "World " + args[0] + " does not exist!");
-
+                sender.sendMessage(Messages.prefixed("goto.world-missing", args[0]));
                 return true;
             }
 
@@ -36,8 +44,7 @@ public class GotoCmd implements Subcommand {
                 target = Bukkit.getPlayerExact(args[1]);
             } else {
                 if (!(sender instanceof Player)) {
-                    sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "The console cannot be teleported to a world! Please specify a player.");
-
+                    sender.sendMessage(Messages.prefixed("goto.console-needs-player"));
                     return true;
                 }
 
@@ -45,13 +52,15 @@ public class GotoCmd implements Subcommand {
             }
 
             if (target == null) {
-                sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + args[1] + " is offline.");
-
+                sender.sendMessage(Messages.prefixed("goto.player-offline", args[1]));
                 return true;
             }
 
-            sender.sendMessage(Logging.COMMAND_PREFIX + "Teleporting " + (target.getName().equals(sender.getName())
-                    ? "yourself" : ChatColor.YELLOW + target.getName() + ChatColor.GRAY) + " to " + ChatColor.AQUA + world.getName() + ChatColor.GRAY + "...");
+            if (target.getName().equals(sender.getName())) {
+                sender.sendMessage(Messages.prefixed("goto.teleporting-self", world.getName()));
+            } else {
+                sender.sendMessage(Messages.prefixed("goto.teleporting-other", target.getName(), world.getName()));
+            }
 
             Location spawnLocation = world.getSpawnLocation();
 

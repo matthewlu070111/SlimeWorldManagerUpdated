@@ -17,6 +17,12 @@ public class MainConfig {
     @Setting(value = "enable_async_world_gen", comment = "Only enable this if you don't have any other plugins that generate worlds.")
     private boolean asyncWorldGenerate = false;
 
+    @Setting(value = "language", comment = "Plugin language: auto, en, zh_CN (Simplified Chinese), zh_TW (Traditional Chinese).")
+    private String language = "auto";
+
+    @Setting(value = "auto_load_all_worlds", comment = "If true, discover all slime worlds from every data source on startup, register missing ones in worlds.yml, and load them all (ignores per-world loadOnStartup).")
+    private boolean autoLoadAllWorlds = true;
+
     @Setting("updater")
     private UpdaterOptions updaterOptions = new UpdaterOptions();
 

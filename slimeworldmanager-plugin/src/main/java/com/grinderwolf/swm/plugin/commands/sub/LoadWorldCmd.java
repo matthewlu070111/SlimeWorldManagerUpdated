@@ -1,6 +1,5 @@
 package com.grinderwolf.swm.plugin.commands.sub;
 
-
 import com.grinderwolf.swm.api.exceptions.CorruptedWorldException;
 import com.grinderwolf.swm.api.exceptions.NewerFormatException;
 import com.grinderwolf.swm.api.exceptions.UnknownWorldException;
@@ -12,10 +11,9 @@ import com.grinderwolf.swm.plugin.commands.CommandManager;
 import com.grinderwolf.swm.plugin.config.ConfigManager;
 import com.grinderwolf.swm.plugin.config.WorldData;
 import com.grinderwolf.swm.plugin.config.WorldsConfig;
+import com.grinderwolf.swm.plugin.locale.Messages;
 import com.grinderwolf.swm.plugin.log.Logging;
-import lombok.Getter;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
@@ -25,12 +23,22 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-@Getter
 public class LoadWorldCmd implements Subcommand {
 
-    private final String usage = "load <world>";
-    private final String description = "Load a world.";
-    private final String permission = "swm.loadworld";
+    @Override
+    public String getUsage() {
+        return "load <world>";
+    }
+
+    @Override
+    public String getDescription() {
+        return Messages.get("cmd.load.description");
+    }
+
+    @Override
+    public String getPermission() {
+        return "swm.loadworld";
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, String[] args) {
@@ -39,8 +47,7 @@ public class LoadWorldCmd implements Subcommand {
             World world = Bukkit.getWorld(worldName);
 
             if (world != null) {
-                sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "World " + worldName + " is already loaded!");
-
+                sender.sendMessage(Messages.prefixed("common.world-already-loaded", worldName));
                 return true;
             }
 
@@ -48,19 +55,17 @@ public class LoadWorldCmd implements Subcommand {
             WorldData worldData = config.getWorlds().get(worldName);
 
             if (worldData == null) {
-                sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Failed to find world " + worldName + " inside the worlds config file.");
-
+                sender.sendMessage(Messages.prefixed("common.world-not-in-config", worldName));
                 return true;
             }
 
             if (CommandManager.getInstance().getWorldsInUse().contains(worldName)) {
-                sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "World " + worldName + " is already being used on another command! Wait some time and try again.");
-
+                sender.sendMessage(Messages.prefixed("common.world-in-use", worldName));
                 return true;
             }
 
             CommandManager.getInstance().getWorldsInUse().add(worldName);
-            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.GRAY + "Loading world " + ChatColor.YELLOW + worldName + ChatColor.GRAY + "...");
+            sender.sendMessage(Messages.prefixed("load.loading", worldName));
 
             // It's best to load the world async, and then just go back to the server thread and add it to the world list
             Bukkit.getScheduler().runTaskAsynchronously(SWMPlugin.getInstance(), () -> {
@@ -78,38 +83,30 @@ public class LoadWorldCmd implements Subcommand {
                         try {
                             SWMPlugin.getInstance().generateWorld(slimeWorld);
                         } catch (IllegalArgumentException ex) {
-                            sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Failed to generate world " + worldName + ": " + ex.getMessage() + ".");
-
+                            sender.sendMessage(Messages.prefixed("common.failed-generate", worldName, ex.getMessage()));
                             return;
                         }
 
-                        sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.GREEN + "World " + ChatColor.YELLOW + worldName
-                                + ChatColor.GREEN + " loaded and generated in " + (System.currentTimeMillis() - start) + "ms!");
+                        sender.sendMessage(Messages.prefixed("common.world-loaded-ms", worldName, System.currentTimeMillis() - start));
                     });
                 } catch (CorruptedWorldException ex) {
                     if (!(sender instanceof ConsoleCommandSender)) {
-                        sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Failed to load world " + worldName +
-                                ": world seems to be corrupted.");
+                        sender.sendMessage(Messages.prefixed("common.failed-load-corrupted", worldName));
                     }
 
                     Logging.error("Failed to load world " + worldName + ": world seems to be corrupted.");
                     ex.printStackTrace();
                 } catch (NewerFormatException ex) {
-                    sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Failed to load world " + worldName + ": this world" +
-                            " was serialized with a newer version of the Slime Format (" + ex.getMessage() + ") that SWM cannot understand.");
+                    sender.sendMessage(Messages.prefixed("common.failed-load-newer-format", worldName, ex.getMessage()));
                 } catch (UnknownWorldException ex) {
-                    sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Failed to load world " + worldName +
-                            ": world could not be found (using data source '" + worldData.getDataSource() + "').");
+                    sender.sendMessage(Messages.prefixed("common.failed-load-unknown", worldName, worldData.getDataSource()));
                 } catch (WorldInUseException ex) {
-                    sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Failed to load world " + worldName +
-                            ": world is already in use. If you think this is a mistake, please wait some time and try again.");
+                    sender.sendMessage(Messages.prefixed("common.failed-load-in-use", worldName));
                 } catch (IllegalArgumentException ex) {
-                    sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Failed to load world " + worldName +
-                            ": " + ex.getMessage());
+                    sender.sendMessage(Messages.prefixed("common.failed-load-reason", worldName, ex.getMessage()));
                 } catch (IOException ex) {
                     if (!(sender instanceof ConsoleCommandSender)) {
-                        sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.RED + "Failed to load world " + worldName
-                                + ". Take a look at the server console for more information.");
+                        sender.sendMessage(Messages.prefixed("common.failed-load-io", worldName));
                     }
 
                     Logging.error("Failed to load world " + worldName + ":");
@@ -147,4 +144,3 @@ public class LoadWorldCmd implements Subcommand {
         return toReturn == null ? Collections.emptyList() : toReturn;
     }
 }
-

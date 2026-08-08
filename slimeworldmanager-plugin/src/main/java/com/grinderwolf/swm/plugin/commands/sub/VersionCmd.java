@@ -2,26 +2,29 @@ package com.grinderwolf.swm.plugin.commands.sub;
 
 import com.grinderwolf.swm.api.utils.SlimeFormat;
 import com.grinderwolf.swm.plugin.SWMPlugin;
-import com.grinderwolf.swm.plugin.log.Logging;
-import lombok.Getter;
-import org.bukkit.ChatColor;
+import com.grinderwolf.swm.plugin.locale.Messages;
 import org.bukkit.command.CommandSender;
 
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 
-@Getter
 public class VersionCmd implements Subcommand {
 
-    private final String usage = "version";
-    private final String description = "Shows the plugin version.";
+    @Override
+    public String getUsage() {
+        return "version";
+    }
+
+    @Override
+    public String getDescription() {
+        return Messages.get("cmd.version.description");
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, String[] args) {
-        sender.sendMessage(Logging.COMMAND_PREFIX + ChatColor.GRAY + "This server is running SWM " + ChatColor.YELLOW + "v" + SWMPlugin.getInstance()
-                .getDescription().getVersion() + ChatColor.GRAY + ", which supports up to Slime Format " + ChatColor.AQUA + "v" + SlimeFormat.SLIME_VERSION + ChatColor.GRAY + ".");
-
+        sender.sendMessage(Messages.prefixed("version.message-full",
+                SWMPlugin.getInstance().getDescription().getVersion(),
+                SlimeFormat.SLIME_VERSION));
         return true;
     }
 
