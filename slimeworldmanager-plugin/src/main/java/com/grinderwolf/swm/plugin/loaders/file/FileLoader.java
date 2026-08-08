@@ -150,24 +150,37 @@ public class FileLoader implements SlimeLoader {
             FileLock fileLock = channel.tryLock();
 
             if (fileLock != null) {
+                // Acquired successfully → nobody else holds the lock
                 fileLock.release();
-                return true;
+                return false;
             }
-        } catch (OverlappingFileLockException ignored) {
 
+            // null means another process holds the lock
+            return true;
+        } catch (OverlappingFileLockException ex) {
+            // This JVM already holds the lock
+            return true;
         } finally {
             if (closeOnFinish) {
                 file.close();
             }
         }
-
-        return false;
     }
 
     @Override
     public void deleteWorld(String worldName) throws UnknownWorldException {
         if (!worldExists(worldName)) {
             throw new UnknownWorldException(worldName);
+        }
+
+        // Close any open handle first so the OS can delete the file (esp. on Windows)
+        RandomAccessFile file = worldFiles.remove(worldName);
+
+        if (file != null) {
+            try {
+                file.close();
+            } catch (IOException ignored) {
+            }
         }
 
         new File(worldDir, worldName + ".slime").delete();
